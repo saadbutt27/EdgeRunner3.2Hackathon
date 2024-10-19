@@ -1,5 +1,7 @@
 # Edge Runner 3.2 Hackathon
 
+## Project: *X-Ray Report Generator*
+
 ## Project Description
 1 - We will use Llama 3.2 (Multimodal) to develop an X-ray report generator.
 
