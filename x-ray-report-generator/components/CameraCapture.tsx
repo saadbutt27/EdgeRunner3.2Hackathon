@@ -1,0 +1,271 @@
+"use client"
+import React, { useEffect, useRef, useState } from 'react';
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
+
+const CameraCapture: React.FC = () => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [isCameraOn, setIsCameraOn] = useState(false); // Track camera state
+    const [isImageSubmitted, setIsImageSubmitted] = useState(false); // To track image submission
+
+     // useEffect to check if videoRef is set properly after rendering
+    useEffect(() => {
+        if (isCameraOn && videoRef.current) {
+            // Start camera if it's not already running and video element exists
+            startCamera();
+        }
+    }, [isCameraOn]);
+
+  // Start the camera
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      streamRef.current = stream;
+      if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        } else {
+            console.error("Video element not available");
+        }
+        setIsCameraOn(true); // Update state to indicate camera is on
+    } catch (error) {
+      console.error("Error accessing the camera: ", error);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      // Stop all the media tracks (audio and video)
+      streamRef.current.getTracks().forEach((track) => {
+        track.stop(); // Stop each track explicitly
+      });
+      
+      // Release the camera by setting the streamRef to null
+      streamRef.current = null;
+    }
+  
+    if (videoRef.current) {
+      videoRef.current.srcObject = null; // Clear the video source
+    }
+  
+    setIsCameraOn(false); // Update state
+    // console.log("Camera stopped, state updated");
+  };
+  
+
+    // Capture image from the video and stop the camera after capturing
+    const captureImage = () => {
+        if (videoRef.current && videoRef.current.srcObject && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if (context) {
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageUrl = canvas.toDataURL('image/png');
+          console.log(imageUrl)
+          setCapturedImage(imageUrl);
+          
+          // Stop the camera after capturing the image
+          stopCamera();
+        }
+      }
+    };
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Handle image file upload and convert it to base64
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setCapturedImage(reader.result as string); // Base64 URL
+        };
+        reader.readAsDataURL(file); // Convert uploaded image to base64
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!capturedImage) {
+      console.log("No image to submit.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", capturedImage);
+
+    try {
+      const response = await fetch("/api/py/image", {
+          method: "POST",
+          body: JSON.stringify({ image: capturedImage }), // Send image as base64 in JSON
+          headers: {
+            "Content-Type": "application/json",
+          },
+      });
+
+      if (response.ok) {
+          const data = await response.json();
+          console.log("Response from API:", data);
+          setIsImageSubmitted(true); // Set to true after successful submission
+          setCapturedImage
+      } else {
+          console.error("Error submitting image:", response.statusText);
+      }
+    } catch (error) {
+        console.error("Error submitting image:", error);
+    } finally {
+      // Reset the captured image after submission
+      setCapturedImage(null);
+    }
+  };
+
+  useEffect(() => {
+    if (capturedImage && window.innerWidth < 768) {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    }
+  }, [capturedImage]);
+
+  return (
+    <div className="container mx-auto p-10">
+      <div className="flex flex-col lg:flex-row lg:items-start gap-8 border-2 p-4 h-full rounded-md shadow">
+        {/* Left section for camera and upload controls */}
+        <div className="flex flex-col items-center justify-center gap-4 lg:w-1/2">
+          {/* Camera controls */}
+          <div className="flex justify-start items-center gap-4">
+              {!isCameraOn ? (
+                  <Button onClick={startCamera}>Start Camera</Button>
+              ) : (
+                  <Button onClick={stopCamera}>Stop Camera</Button>
+              )} 
+          </div>
+
+          {/* Video stream when the camera is on */}
+          {isCameraOn && (
+            <div className="flex flex-col items-center gap-4 mt-5">
+                <video 
+                  className="border-2 border-black" 
+                  ref={videoRef} 
+                  autoPlay
+                  playsInline 
+                  width="100%" 
+                />
+                <Button onClick={captureImage} disabled={!isCameraOn}>
+                    Capture Image
+                </Button>
+            </div>
+          )}
+
+          <p className='font-bold text-xl'>OR</p>
+
+          {/* Image upload */}
+          <div className="grid w-full max-w-sm items-center gap-1.5">
+              <Label htmlFor="upload-image" className="text-lg font-bold text-center mb-2">
+                  Upload Image:
+              </Label>
+              <Input type="file" id="upload-image" accept="image/*" onChange={handleImageUpload} />
+          </div>
+        </div>
+
+        {/* Right section for displaying the captured/uploaded image */}
+        {capturedImage && (
+            <div className="lg:w-1/2 flex flex-col justify-center items-center gap-y-4 mt-10 lg:mt-0">
+              <h3 className="text-xl font-bold">Preview Image:</h3>
+              <img src={capturedImage} alt="Captured or Uploaded" height={500} width={300}/>
+              <Button onClick={handleSubmit}>Submit Image</Button>
+            </div>
+        )}
+
+        {/* Right div for image submission status and PDF */}
+        {isImageSubmitted && (
+          <div className="md:w-1/2 flex flex-col items-center">
+            <div className='flex flex-col gap-4'>
+                <p className="text-green-500 font-bold">
+                    Image submitted successfully!
+                </p>
+                {/* PDF document */}
+                <iframe
+                    src="report.pdf"
+                    className="border border-gray-300"
+                    width="100%"
+                    height="400px"
+                ></iframe>
+                {/* Download button */}
+                <Button>
+                    <a href="report.pdf" download="report.pdf">
+                        Download PDF
+                    </a>
+                </Button>
+            </div>
+          </div>
+      )}
+      </div>
+      {/* Hidden canvas for image capture */}
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+    </div>
+  );
+  // return (
+  //   <div className=''>
+  //       <div className='flex justify-center items-center gap-4 mt-5'>
+  //           {!isCameraOn ? (
+  //               <Button onClick={startCamera}>Start Camera</Button>
+  //           ) : (
+  //               <Button onClick={stopCamera}>Stop Camera</Button>
+  //           )}
+  //       </div>
+        
+  //       {/* Only show video stream when camera is on */}
+  //       {isCameraOn && (
+  //         <div className='flex flex-col items-center mt-5'>
+  //           <video 
+  //               className='border-2 border-black m-5' 
+  //               ref={videoRef} 
+  //               autoPlay 
+  //               playsInline 
+  //               width="100%"
+  //           />
+  //           <Button onClick={captureImage} disabled={!isCameraOn}>
+  //             Capture Image
+  //           </Button>
+  //         </div>
+  //       )}
+
+  //       {/* Hidden canvas for capturing image */}
+  //       <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+  //       {/* Display captured or uploaded image and submit button */}
+  //       {capturedImage && (
+  //         <div className='flex flex-col justify-center items-center gap-y-4 mt-10'>
+  //           <h3 className='text-xl font-bold'>
+  //             Preview Image:
+  //           </h3>
+  //           <img src={capturedImage} alt="Captured / Uploaded" />
+  //           <Button onClick={handleSubmit}>
+  //             Submit Image
+  //           </Button>
+  //         </div>
+  //       )}
+
+  //       {/* Display input field for uploading an image */}  
+  //       {!capturedImage && (
+  //         <div className="grid w-full max-w-sm items-center gap-1.5 mt-10">
+  //           <Label htmlFor="upload-image" className='text-lg font-bold'>Upload Image:</Label>
+  //           <Input 
+  //             type="file" 
+  //             id="upload-image" 
+  //             accept="image/*" 
+  //             onChange={handleImageUpload}
+  //           />
+  //         </div>
+  //       )}
+
+  //   </div>
+  // );
+};
+
+export default CameraCapture;
