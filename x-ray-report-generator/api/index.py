@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 import base64
 from io import BytesIO
 from PIL import Image
+from fastapi.responses import StreamingResponse
+from .utils import *
 # from fastapi.middleware.cors import CORSMiddleware
 
 ### Create FastAPI instance with custom docs and openapi url
@@ -27,20 +29,28 @@ def hello_fast_api():
 async def process_image(request: Request):
     data = await request.json()
     image_data = data.get('image')
-    print(image_data)
+    patient_name = data.get('patient_name')
+    patient_dob = data.get('patient_dob')
 
-    if image_data:
-        # Strip the "data:image/png;base64," prefix from the data URL
-        base64_image = image_data.split(",")[1]
+    # print(image_data, patient_name, patient_dob)
 
-        # Decode the base64 image
-        image_bytes = base64.b64decode(base64_image)
+    if image_data and patient_name and patient_dob:
+        # Create input message for the LLaMA model
+        input_message = create_message(image_data, patient_name, patient_dob)
+        
+        # Get the response from the LLaMA model
+        response_content = lama_model(input_message)
+        # print(f"Model Response: {response_text}")
 
-        # Convert to an image using PIL (Python Imaging Library)
-        image = Image.open(BytesIO(image_bytes))
-
-        # You can now display the image or save it
-        image.show()  # This will display the image
-        return {"message": "Image processed successfully"}
+        # Generate the PDF
+        # content = "Sample text for the PDF"  # Replace with your actual content
+        pdf_buffer = generate_pdf(response_content)
+        
+        # Return the PDF as a downloadable file
+        return StreamingResponse(
+            pdf_buffer, 
+            media_type="application/pdf", 
+            headers={"Content-Disposition": "attachment; filename=report.pdf"}
+        )
     else:
         return {"error": "No image data received"}

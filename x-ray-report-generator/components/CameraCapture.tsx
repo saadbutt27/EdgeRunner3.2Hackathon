@@ -10,6 +10,9 @@ const CameraCapture: React.FC = () => {
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [isCameraOn, setIsCameraOn] = useState(false); // Track camera state
     const [isImageSubmitted, setIsImageSubmitted] = useState(false); // To track image submission
+    const [patientName, setPatientName] = useState<string>(''); // New state for patient name
+    const [patientDOB, setPatientDOB] = useState<string>(''); // New state for patient DOB
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null); // State to store the PDF URL
 
      // useEffect to check if videoRef is set properly after rendering
     useEffect(() => {
@@ -66,7 +69,6 @@ const CameraCapture: React.FC = () => {
         if (context) {
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           const imageUrl = canvas.toDataURL('image/png');
-          console.log(imageUrl)
           setCapturedImage(imageUrl);
           
           // Stop the camera after capturing the image
@@ -92,28 +94,30 @@ const CameraCapture: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!capturedImage) {
-      console.log("No image to submit.");
+    if (!capturedImage || !patientName || !patientDOB) {
+      console.log("All fields are required.");
       return;
     }
 
-    const formData = new FormData();
-    formData.append("image", capturedImage);
-
     try {
+      console.log(patientName, patientDOB)
       const response = await fetch("/api/py/image", {
           method: "POST",
-          body: JSON.stringify({ image: capturedImage }), // Send image as base64 in JSON
+          body: JSON.stringify({
+            image: capturedImage,
+            patient_name: patientName,
+            patient_dob: patientDOB,
+          }),
           headers: {
             "Content-Type": "application/json",
           },
       });
 
       if (response.ok) {
-          const data = await response.json();
-          console.log("Response from API:", data);
-          setIsImageSubmitted(true); // Set to true after successful submission
-          setCapturedImage
+        const blob = await response.blob(); // Get the PDF as a blob
+        const pdfUrl = URL.createObjectURL(blob); // Create a URL for the PDF
+        setPdfUrl(pdfUrl); // Store the PDF URL in state
+        setIsImageSubmitted(true);
       } else {
           console.error("Error submitting image:", response.statusText);
       }
@@ -168,104 +172,74 @@ const CameraCapture: React.FC = () => {
               <Label htmlFor="upload-image" className="text-lg font-bold text-center mb-2">
                   Upload Image:
               </Label>
-              <Input type="file" id="upload-image" accept="image/*" onChange={handleImageUpload} />
+              <Input 
+                type="file" 
+                id="upload-image" 
+                accept="image/*" 
+                onChange={handleImageUpload} 
+              />
           </div>
         </div>
+
 
         {/* Right section for displaying the captured/uploaded image */}
         {capturedImage && (
             <div className="lg:w-1/2 flex flex-col justify-center items-center gap-y-4 mt-10 lg:mt-0">
               <h3 className="text-xl font-bold">Preview Image:</h3>
               <img src={capturedImage} alt="Captured or Uploaded" height={500} width={300}/>
+              {/* New input fields for patient name and DOB */}
+              <div className="flex gap-x-3">
+                <div className="mt-4">
+                  <Label htmlFor="patient-name" className="text-sm font-bold">Patient's Name:</Label>
+                  <Input
+                    type="text"
+                    id="patient-name"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    placeholder="Enter patient's name"
+                    className="mt-2"
+                    required
+                  />
+                </div>
+                <div className="mt-4">
+                  <Label htmlFor="patient-dob" className="text-sm font-bold">Date of Birth:</Label>
+                  <Input
+                    type="date"
+                    id="patient-dob"
+                    value={patientDOB}
+                    onChange={(e) => setPatientDOB(e.target.value)}
+                    className="mt-2"
+                    required
+                  />
+                </div>
+              </div>
               <Button onClick={handleSubmit}>Submit Image</Button>
             </div>
         )}
 
         {/* Right div for image submission status and PDF */}
-        {isImageSubmitted && (
-          <div className="md:w-1/2 flex flex-col items-center">
-            <div className='flex flex-col gap-4'>
-                <p className="text-green-500 font-bold">
-                    Image submitted successfully!
-                </p>
-                {/* PDF document */}
-                <iframe
-                    src="report.pdf"
-                    className="border border-gray-300"
-                    width="100%"
-                    height="400px"
-                ></iframe>
-                {/* Download button */}
-                <Button>
-                    <a href="report.pdf" download="report.pdf">
-                        Download PDF
-                    </a>
-                </Button>
-            </div>
+        {isImageSubmitted && pdfUrl && (
+          <div className="md:w-1/2 flex flex-col items-center gap-y-3">
+            <p className="text-green-500 font-bold">Image submitted successfully! You may download you report.</p>
+            <iframe
+              src={pdfUrl}
+              className="border border-gray-300"
+              width="100%"
+              height="400px"
+              title="Report PDF"
+            ></iframe>
+            <Button>
+              <a href={pdfUrl} download="report.pdf">
+                Download Report
+              </a>
+            </Button>
           </div>
-      )}
+        )}
       </div>
       {/* Hidden canvas for image capture */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
   );
-  // return (
-  //   <div className=''>
-  //       <div className='flex justify-center items-center gap-4 mt-5'>
-  //           {!isCameraOn ? (
-  //               <Button onClick={startCamera}>Start Camera</Button>
-  //           ) : (
-  //               <Button onClick={stopCamera}>Stop Camera</Button>
-  //           )}
-  //       </div>
-        
-  //       {/* Only show video stream when camera is on */}
-  //       {isCameraOn && (
-  //         <div className='flex flex-col items-center mt-5'>
-  //           <video 
-  //               className='border-2 border-black m-5' 
-  //               ref={videoRef} 
-  //               autoPlay 
-  //               playsInline 
-  //               width="100%"
-  //           />
-  //           <Button onClick={captureImage} disabled={!isCameraOn}>
-  //             Capture Image
-  //           </Button>
-  //         </div>
-  //       )}
-
-  //       {/* Hidden canvas for capturing image */}
-  //       <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-  //       {/* Display captured or uploaded image and submit button */}
-  //       {capturedImage && (
-  //         <div className='flex flex-col justify-center items-center gap-y-4 mt-10'>
-  //           <h3 className='text-xl font-bold'>
-  //             Preview Image:
-  //           </h3>
-  //           <img src={capturedImage} alt="Captured / Uploaded" />
-  //           <Button onClick={handleSubmit}>
-  //             Submit Image
-  //           </Button>
-  //         </div>
-  //       )}
-
-  //       {/* Display input field for uploading an image */}  
-  //       {!capturedImage && (
-  //         <div className="grid w-full max-w-sm items-center gap-1.5 mt-10">
-  //           <Label htmlFor="upload-image" className='text-lg font-bold'>Upload Image:</Label>
-  //           <Input 
-  //             type="file" 
-  //             id="upload-image" 
-  //             accept="image/*" 
-  //             onChange={handleImageUpload}
-  //           />
-  //         </div>
-  //       )}
-
-  //   </div>
-  // );
 };
 
 export default CameraCapture;
