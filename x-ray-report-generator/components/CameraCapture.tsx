@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import toast, { Toaster } from 'react-hot-toast';
+import Image from 'next/image';
 
 const CameraCapture: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -197,11 +198,11 @@ const CameraCapture: React.FC = () => {
         {capturedImage && (
             <div className="lg:w-1/2 flex flex-col justify-center items-center gap-y-4 mt-10 lg:mt-0">
               <h3 className="text-xl font-bold">Preview Image:</h3>
-              <img src={capturedImage} alt="Captured or Uploaded" height={500} width={300}/>
+              <Image src={capturedImage} alt="Captured or Uploaded" height={500} width={300}/>
               {/* New input fields for patient name and DOB */}
               <div className="flex gap-x-3">
                 <div className="mt-4">
-                  <Label htmlFor="patient-name" className="text-sm font-bold">Patient's Name:</Label>
+                  <Label htmlFor="patient-name" className="text-sm font-bold">Patient Name:</Label>
                   <Input
                     type="text"
                     id="patient-name"
