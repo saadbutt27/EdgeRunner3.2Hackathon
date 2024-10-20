@@ -18,18 +18,15 @@ def lama_model(input_message):
         base_url="https://api.aimlapi.com/v1", 
         api_key=secret
     )
-    # print(input_message)
     try:
-        # print("taking response")
         response=client.chat.completions.create(
             model="meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",
             messages=input_message,
             max_tokens=300,
         )
 
-        # print("got the response")
         result=response.choices[0].message.content 
-        print("Response received from Together API:", response)
+        # print("Response received from Together API:", response)
         return result
     except Exception as e:
         print("Error during API request:", e)
@@ -86,48 +83,6 @@ def create_message(image, patient_name, patient_dob):
     ]
 
     return input_mesage
-
-# def generate_pdf(content):
-#     # Initialize PDF object
-#     pdf = FPDF()
-
-#     # Add a page
-#     pdf.add_page()
-
-#     # Set font for the heading (Bold and larger size)
-#     pdf.set_font("Arial", style='B', size=16)
-#     pdf.cell(200, 10, "X-Ray Report", ln=True, align='C')  # Centered heading
-
-#     # Add a subheading (Italic)
-#     pdf.set_font("Arial", style='I', size=12)
-#     pdf.cell(200, 10, "Generated on: 2024-10-19", ln=True, align='L')
-
-#     # Add some space
-#     pdf.ln(10)
-
-#     # Set regular font for content
-#     pdf.set_font("Arial", size=12)
-#     pdf.multi_cell(0, 10, content)  # The regular content of the PDF
-
-#     # Add a bold subheading
-#     pdf.set_font("Arial", style='B', size=12)
-#     pdf.cell(200, 10, "Findings:", ln=True)
-
-#     # Add some italic text under Findings
-#     pdf.set_font("Arial", style='I', size=12)
-#     pdf.multi_cell(0, 10, "The patient shows signs of improvement after the treatment...")
-
-#     # Create a BytesIO buffer to hold the PDF
-#     pdf_buffer = io.BytesIO()
-
-#     # Output the PDF data as a string and write it to the BytesIO buffer
-#     pdf_output = pdf.output(dest='S').encode('latin1')
-#     pdf_buffer.write(pdf_output)
-
-#     # Set the file pointer to the beginning of the stream
-#     pdf_buffer.seek(0)
-
-#     return pdf_buffer
 
 def generate_pdf(content):
     # Helper function to parse the content and apply bold formatting
