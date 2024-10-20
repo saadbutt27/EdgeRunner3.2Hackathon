@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import toast, { Toaster } from 'react-hot-toast';
 
 const CameraCapture: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -98,9 +99,9 @@ const CameraCapture: React.FC = () => {
       console.log("All fields are required.");
       return;
     }
-
+    
+    const toastId = toast.loading('Loading...');
     try {
-      console.log(patientName, patientDOB)
       const response = await fetch("/api/py/image", {
           method: "POST",
           body: JSON.stringify({
@@ -118,11 +119,20 @@ const CameraCapture: React.FC = () => {
         const pdfUrl = URL.createObjectURL(blob); // Create a URL for the PDF
         setPdfUrl(pdfUrl); // Store the PDF URL in state
         setIsImageSubmitted(true);
+        toast.success('Report genearted, you may download it.', {
+          id: toastId,
+        });
       } else {
           console.error("Error submitting image:", response.statusText);
-      }
-    } catch (error) {
+          toast.error('Provided image is not an X-ray. Report cannot be generated.', {
+            id: toastId,
+          });
+        }
+      } catch (error) {
         console.error("Error submitting image:", error);
+        toast.error('Provided image is not an X-ray. Report cannot be generated.', {
+          id: toastId,
+        });
     } finally {
       // Reset the captured image after submission
       setCapturedImage(null);
@@ -137,6 +147,7 @@ const CameraCapture: React.FC = () => {
 
   return (
     <div className="container mx-auto p-10">
+      <Toaster />
       <div className="flex flex-col lg:flex-row lg:items-start gap-8 border-2 p-4 h-full rounded-md shadow">
         {/* Left section for camera and upload controls */}
         <div className="flex flex-col items-center justify-center gap-4 lg:w-1/2">

@@ -2,7 +2,7 @@
 
 ## Project: *X-Ray Report Generator*
 
-## Project Description
+### Project Description
 1 - We will use Llama 3.2 (Multimodal) to develop an X-ray report generator.
 
 2 - Normally, this report is prepared by the duty doctor, written there and then.
